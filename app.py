@@ -21,7 +21,7 @@ def format_ruby(text):
     if not isinstance(text, str): return text
     return re.sub(r'([一-龠]+)\(([^)]+)\)', r'<ruby>\1<rt>\2</rt></ruby>', text)
 
-st.title("こども百人一首クイズ")
+st.title("百人一首クイズ")
 
 @st.cache_data
 def load_data():
@@ -63,5 +63,6 @@ try:
 
 except Exception as e:
     st.error(f"エラー: {e}")
+
 
 
