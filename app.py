@@ -153,6 +153,15 @@ elif st.session_state.app_stage == 'result':
             del st.session_state[key]
         st.rerun()
 
+# --- 画面を一番上に戻すための仕掛け ---
+st.components.v1.html(
+    """
+    <script>
+    window.parent.document.querySelector('section.main').scrollTo(0, 0);
+    </script>
+    """,
+    height=0,
+)
 
 
 
