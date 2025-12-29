@@ -91,15 +91,15 @@ elif st.session_state.app_stage == 'quiz':
         for i, opt in enumerate(q['options']):
             if st.button(format_ruby(opt), key=f"btn_{i}", use_container_width=True):
                 if not q['answered']:
-# --- クイズ画面の中の判定部分を以下のように修正 ---
-                if opt == q['target']['shimo']:
-                    st.success("✨ 正解！ ✨")
-                    play_sound("correct.mp3")  # ←これを追加
-                    progress_df.at[q['idx'], player] = "1"
-                    save_to_sheets(progress_df)
-                else:
-                    st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']}")
-                    play_sound("wrong.mp3")     # ←これを追加
+    # --- クイズ画面の中の判定部分を以下のように修正 ---
+                    if opt == q['target']['shimo']:
+                        st.success("✨ 正解！ ✨")
+                        play_sound("correct.mp3")  # ←これを追加
+                        progress_df.at[q['idx'], player] = "1"
+                        save_to_sheets(progress_df)
+                    else:
+                        st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']}")
+                        play_sound("wrong.mp3")     # ←これを追加
 
         st.write("---")
         col1, col2 = st.columns(2)
@@ -130,6 +130,7 @@ elif st.session_state.app_stage == 'result':
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
 
 
 
