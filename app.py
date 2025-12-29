@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 # --- 設定 ---
 PLAYERS = ["英明", "浄子", "悠奈", "千紘"]
 # 【重要】作成したスプレッドシートのIDをここに貼り付けてください
-SPREADSHEET_ID = "ここにスプレッドシートのIDを貼り付け"
+SPREADSHEET_ID = "1npMBT--ZtreVNwwZh2Qo2zb7VJNu6wctxm5oELtPstA"
 RANGE_NAME = "シート1!A:E"
 
 # --- Google Sheets API 接続関数 ---
@@ -109,6 +109,7 @@ else:
     if st.button("つぎのもんだいへ ➔"):
         if 'quiz' in st.session_state: del st.session_state.quiz
         st.rerun()
+
 
 
 
