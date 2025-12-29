@@ -19,11 +19,23 @@ def get_sheets_service():
     return service.spreadsheets()
 
 def load_data_from_sheets():
-    sheets = get_sheets_service()
-    result = sheets.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
-    values = result.get("values", [])
-    if not values: return pd.DataFrame()
-    return pd.DataFrame(values[1:], columns=values[0])
+    try:
+        sheets = get_sheets_service()
+        result = sheets.values().get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME).execute()
+        values = result.get("values", [])
+        
+        if not values or len(values) < 2:
+            # データがない場合は、100首分すべて 0 の空の表を作る
+            df = pd.DataFrame(columns=["kami", "英明", "浄子", "悠奈", "千紘"])
+            df["kami"] = master_data["kami"]
+            for p in PLAYERS:
+                df[p] = "0"
+            return df
+            
+        return pd.DataFrame(values[1:], columns=values[0])
+    except Exception as e:
+        st.error(f"スプレッドシートの読み込みに失敗しました: {e}")
+        return pd.DataFrame()
 
 def save_to_sheets(df):
     sheets = get_sheets_service()
@@ -88,19 +100,24 @@ elif st.session_state.app_stage == 'quiz':
         q = st.session_state.quiz
         st.markdown(f"## {format_ruby(q['target']['kami'])}", unsafe_allow_html=True)
         
+        # --- 選択肢の表示部分をここから差し替え ---
         for i, opt in enumerate(q['options']):
-            if st.button(format_ruby(opt), key=f"btn_{i}", use_container_width=True):
+            # ボタンの上にルビ付きのテキストを表示
+            st.markdown(format_ruby(opt), unsafe_allow_html=True)
+            
+            # そのすぐ下に「これ！」というボタンを配置
+            if st.button("これ！", key=f"btn_{i}", use_container_width=True):
                 if not q['answered']:
-    # --- クイズ画面の中の判定部分を以下のように修正 ---
                     if opt == q['target']['shimo']:
                         st.success("✨ 正解！ ✨")
-                        play_sound("correct.mp3")  # ←これを追加
+                        play_sound("correct.mp3")
                         progress_df.at[q['idx'], player] = "1"
                         save_to_sheets(progress_df)
                     else:
                         st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']}")
-                        play_sound("wrong.mp3")     # ←これを追加
-
+                        play_sound("wrong.mp3")
+                    st.session_state.quiz['answered'] = True
+        # --- ここまで差し替え ---
         st.write("---")
         col1, col2 = st.columns(2)
         with col1:
@@ -130,6 +147,7 @@ elif st.session_state.app_stage == 'result':
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
 
 
 
