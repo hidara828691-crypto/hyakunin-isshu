@@ -101,12 +101,86 @@ if st.session_state.app_stage == 'start':
                 save_to_sheets(progress_df)
                 st.session_state.current_player = new_name
                 st.session_state.app_stage = 'quiz'
-                st.
+                st.success(f"{new_name}さんを登録しました！")
+                st.rerun()
+            elif new_name in current_players:
+                st.warning("その名前はすでに登録されています。")
 
+# B. クイズ画面
+elif st.session_state.app_stage == 'quiz':
+    player = st.session_state.current_player
+    progress_df = load_data_from_sheets(master_data)
 
+    learned_indices = progress_df[progress_df[player].astype(str) == "1"].index.tolist()
+    learned_count = len(learned_indices)
+    total_count = len(master_data)
 
+    st.title(f"{player}さんの クイズ")
+    st.progress(int(learned_count / total_count * 100))
+    st.write(f"いままでにおぼえた数: {learned_count} / {total_count}")
 
+    unlearned_indices = [i for i in range(total_count) if i not in learned_indices]
 
+    if not unlearned_indices:
+        st.balloons()
+        st.success("コンプリート！おめでとうございます！")
+        if st.button("スタートにもどる"):
+            st.session_state.app_stage = 'start'
+            st.rerun()
+    else:
+        if 'quiz' not in st.session_state:
+            target_idx = random.choice(unlearned_indices)
+            target = master_data.iloc[target_idx].to_dict()
+            wrong = random.sample([d for d in master_data['shimo'] if d != target['shimo']], 3)
+            options = [target['shimo']] + wrong
+            random.shuffle(options)
+            st.session_state.quiz = {'target': target, 'options': options, 'answered': False, 'idx': target_idx}
 
+        q = st.session_state.quiz
+        st.markdown(f"## {format_ruby(q['target']['kami'])}", unsafe_allow_html=True)
+        st.write("---")
+        
+        for i, opt in enumerate(q['options']):
+            st.markdown(format_ruby(opt), unsafe_allow_html=True)
+            if st.button("これ！", key=f"btn_{i}", use_container_width=True):
+                if not q['answered']:
+                    if opt == q['target']['shimo']:
+                        st.success("✨ 正解！ ✨")
+                        play_sound("correct.mp3")
+                        progress_df.at[q['idx'], player] = "1"
+                        save_to_sheets(progress_df)
+                    else:
+                        st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']}")
+                        play_sound("wrong.mp3")
+                    st.session_state.quiz['answered'] = True
 
+        st.write("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("つぎのもんだいへ ➔"):
+                if 'quiz' in st.session_state: del st.session_state.quiz
+                st.rerun()
+        with col2:
+            if st.button("きょうはおわる ☕"):
+                st.session_state.app_stage = 'result'
+                # 最新の数値を再計算して渡す
+                final_count = progress_df[player].astype(str).tolist().count("1")
+                st.session_state.final_count = final_count
+                st.rerun()
 
+# C. 終了画面
+elif st.session_state.app_stage == 'result':
+    st.title("お疲れ様でした！")
+    player = st.session_state.current_player
+    count = st.session_state.get('final_count', 0)
+    
+    st.write(f"### {player}さんは、これまでに")
+    st.header(f"✨ {count}首 ✨")
+    st.write("### おぼえることができました！")
+    st.balloons()
+    
+    if st.button("タイトルにもどる"):
+        # セッションをクリアして最初へ
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
