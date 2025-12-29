@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 
 # --- 設定 ---
 PLAYERS = ["英明", "浄子", "悠奈", "千紘"]
-SPREADSHEET_ID = "ここにスプレッドシートのIDを貼り付け"
+SPREADSHEET_ID = "1npMBT--ZtreVNwwZh2Qo2zb7VJNu6wctxm5oELtPstA"
 RANGE_NAME = "シート1!A:E"
 
 # --- Google Sheets API 接続関数 ---
@@ -128,5 +128,6 @@ elif st.session_state.app_stage == 'result':
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
 
 
