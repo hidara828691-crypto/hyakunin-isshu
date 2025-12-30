@@ -146,6 +146,7 @@ elif st.session_state.app_stage == 'quiz':
         
         for i, opt in enumerate(q['options']):
             st.markdown(format_ruby(opt), unsafe_allow_html=True)
+# --- B. クイズ画面内の判定ロジックを修正 ---
             if st.button("これ！", key=f"btn_{i}", use_container_width=True):
                 if not q['answered']:
                     new_score = q['score_before']
@@ -153,6 +154,11 @@ elif st.session_state.app_stage == 'quiz':
                         new_score = min(3, q['score_before'] + 1)
                         st.success(f"✨ 正解！ ({q['score_before']}点 → {new_score}点) ✨")
                         play_sound("correct.mp3")
+                        
+                        # --- 現代語訳の表示を追加 ---
+                        if 'yaku' in q['target'] and pd.notna(q['target']['yaku']):
+                            st.info(f"💡 **現代語訳**：\n\n{q['target']['yaku']}")
+                        
                         if new_score == 3:
                             st.balloons()
                             st.write("🎊 この歌をマスターしました！ 🎊")
@@ -160,8 +166,11 @@ elif st.session_state.app_stage == 'quiz':
                         new_score = max(0, q['score_before'] - 1)
                         st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']} \n\n (-1点：{q['score_before']}点 → {new_score}点)")
                         play_sound("wrong.mp3")
+                        
+                        # 不正解の時も訳を表示してあげると勉強になります
+                        if 'yaku' in q['target'] and pd.notna(q['target']['yaku']):
+                            st.write(f"💡 **現代語訳**：{q['target']['yaku']}")
                     
-                    # スプレッドシート更新
                     progress_df.at[q['idx'], player] = str(new_score)
                     save_to_sheets(progress_df)
                     st.session_state.quiz['answered'] = True
@@ -190,3 +199,4 @@ elif st.session_state.app_stage == 'result':
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
