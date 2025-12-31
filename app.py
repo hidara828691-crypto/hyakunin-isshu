@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 
 # --- 設定 ---
 # 【重要】ご自身のスプレッドシートIDに書き換えてください
-SPREADSHEET_ID = "あなたのスプレッドシートIDをここに貼り付け"
+SPREADSHEET_ID = "1npMBT--ZtreVNwwZh2Qo2zb7VJNu6wctxm5oELtPstA"
 RANGE_NAME = "シート1!A:Z"
 
 # --- 1. 音を鳴らすための機能 ---
@@ -205,3 +205,4 @@ elif st.session_state.app_stage == 'result':
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
