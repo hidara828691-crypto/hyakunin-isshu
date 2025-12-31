@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 
 # --- 設定 ---
 # 【重要】ご自身のスプレッドシートIDに書き換えてください
-SPREADSHEET_ID = "1npMBT--ZtreVNwwZh2Qo2zb7VJNu6wctxm5oELtPstA"
+SPREADSHEET_ID = "あなたのスプレッドシートIDをここに貼り付け"
 RANGE_NAME = "シート1!A:Z"
 
 # --- 1. 音を鳴らすための機能 ---
@@ -36,7 +36,6 @@ def load_data_from_sheets(master_data):
         values = result.get("values", [])
         
         if not values or len(values) < 1:
-            # 初期プレイヤー設定
             initial_players = ["英明", "浄子", "悠奈", "千紘"]
             df = pd.DataFrame(columns=["kami"] + initial_players)
             df["kami"] = master_data["kami"]
@@ -44,7 +43,13 @@ def load_data_from_sheets(master_data):
                 df[p] = "0"
             return df
             
+        # 1行目を見出しとして読み込み
         df = pd.DataFrame(values[1:], columns=values[0])
+        # 足りない行（100行に満たない場合）を埋める
+        if len(df) < len(master_data):
+            extra_rows = pd.DataFrame(index=range(len(df), len(master_data)), columns=df.columns).fillna("0")
+            df = pd.concat([df, extra_rows]).reset_index(drop=True)
+            df["kami"] = master_data["kami"]
         return df
     except Exception as e:
         st.error(f"読み込みエラー: {e}")
@@ -67,7 +72,6 @@ def format_ruby(text):
     return re.sub(r'([一-龠]+)\(([^)]+)\)', r'<ruby>\1<rt>\2</rt></ruby>', text)
 
 # --- 3. メイン処理 ---
-# CSV読み込み（kami, shimo, author, yaku の列がある前提）
 master_data = pd.read_csv("hi.csv", encoding='utf-8_sig')
 
 if 'app_stage' not in st.session_state:
@@ -75,7 +79,7 @@ if 'app_stage' not in st.session_state:
 
 # A. スタート画面
 if st.session_state.app_stage == 'start':
-    st.title("百人一首 3点先取マスターへの道")
+    st.title("百人一首 3点マスターへの道")
     progress_df = load_data_from_sheets(master_data)
     current_players = [col for col in progress_df.columns if col != 'kami']
     
@@ -103,26 +107,25 @@ elif st.session_state.app_stage == 'quiz':
     player = st.session_state.current_player
     progress_df = load_data_from_sheets(master_data)
 
-    # 点数を数値に変換してマスター状況を確認
+    # 点数を数値に変換
     scores = pd.to_numeric(progress_df[player], errors='coerce').fillna(0).astype(int)
-    mastered_indices = scores[scores >= 3].index.tolist()
-    mastered_count = len(mastered_indices)
+    mastered_count = len(scores[scores >= 3])
     total_count = len(master_data)
 
     st.title(f"{player}さんの クイズ")
     st.progress(int(mastered_count / total_count * 100))
-    st.write(f"マスターした数: {mastered_count} / {total_count}")
+    st.write(f"マスター(3点)した数: {mastered_count} / {total_count}")
 
-    # 出題対象（3点未満の歌）
     unmastered_indices = scores[scores < 3].index.tolist()
 
     if not unmastered_indices:
         st.balloons()
-        st.success("全ての歌をマスターしました！おめでとう！")
+        st.success("全ての歌をマスターしました！")
         if st.button("スタートにもどる"):
             st.session_state.app_stage = 'start'
             st.rerun()
     else:
+        # クイズの生成
         if 'quiz' not in st.session_state:
             target_idx = random.choice(unmastered_indices)
             target = master_data.iloc[target_idx].to_dict()
@@ -144,6 +147,7 @@ elif st.session_state.app_stage == 'quiz':
         st.markdown(f"## {format_ruby(q['target']['kami'])}", unsafe_allow_html=True)
         st.write("---")
         
+        # 選択肢ボタン
         for i, opt in enumerate(q['options']):
             st.markdown(format_ruby(opt), unsafe_allow_html=True)
             if st.button("これ！", key=f"btn_{i}", use_container_width=True):
@@ -153,22 +157,16 @@ elif st.session_state.app_stage == 'quiz':
                         new_score = min(3, q['score_before'] + 1)
                         st.success(f"✨ 正解！ ({q['score_before']}点 → {new_score}点) ✨")
                         play_sound("correct.mp3")
-                        
-                        # 正解時に作者と訳を表示
                         info_box = f"👤 **作者**：{author_name}\n\n"
                         if 'yaku' in q['target'] and pd.notna(q['target']['yaku']):
                             info_box += f"💡 **現代語訳**：\n\n{q['target']['yaku']}"
                         st.info(info_box)
-
                         if new_score == 3:
                             st.balloons()
-                            st.write(f"🎊 【{author_name}】の歌をマスターしました！ 🎊")
                     else:
                         new_score = max(0, q['score_before'] - 1)
                         st.error(f"ざんねん！ 正解は... \n\n {q['target']['shimo']} \n\n (-1点：{q['score_before']}点 → {new_score}点)")
                         play_sound("wrong.mp3")
-                        
-                        # 不正解時も作者と訳を表示
                         st.write(f"👤 **作者**: {author_name}")
                         if 'yaku' in q['target'] and pd.notna(q['target']['yaku']):
                             st.write(f"💡 **現代語訳**: {q['target']['yaku']}")
@@ -177,9 +175,33 @@ elif st.session_state.app_stage == 'quiz':
                     save_to_sheets(progress_df)
                     st.session_state.quiz['answered'] = True
 
+        # --- ナビゲーションボタン（ここを修正しました） ---
         st.write("---")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("つぎのもんだいへ ➔"):
-                if 'quiz' in st.session_state: del st.session_state.quiz
+            if st.button("つぎのもんだいへ ➔", use_container_width=True):
+                if 'quiz' in st.session_state:
+                    del st.session_state.quiz
                 st.rerun()
+        with col2:
+            if st.button("きょうはおわる ☕", use_container_width=True):
+                # 最終的なマスター数を数えて結果画面へ
+                latest_df = load_data_from_sheets(master_data)
+                latest_scores = pd.to_numeric(latest_df[player], errors='coerce').fillna(0).astype(int)
+                st.session_state.final_count = len(latest_scores[latest_scores >= 3])
+                st.session_state.app_stage = 'result'
+                st.rerun()
+
+# C. 終了画面
+elif st.session_state.app_stage == 'result':
+    st.title("お疲れ様でした！")
+    player = st.session_state.current_player
+    count = st.session_state.get('final_count', 0)
+    st.write(f"### {player}さんは、これまでに")
+    st.header(f"✨ {count}首 ✨")
+    st.write("### 完全マスター(3点)できました！")
+    st.balloons()
+    if st.button("タイトルにもどる"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
